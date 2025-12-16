@@ -7,7 +7,7 @@ require('dotenv').config();
 
 // CORS middleware - allow all origins for deployment
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
+  origin: process.env.FRONTEND_URL || 'https://ladybird-frontend-deploy.vercel.app',
   credentials: true
 }));
 
@@ -52,4 +52,5 @@ mongoose.connect(MONGO_URL)
 app.listen(PORT, () => {
     console.log(`server is connected successfully on PORT ${PORT}`);
 });
+
 
