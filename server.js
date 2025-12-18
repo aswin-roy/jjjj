@@ -6,10 +6,18 @@ app.use(express.json());
 require('dotenv').config();
 
 // CORS middleware - allow all origins for deployment
+//app.use(cors({
+ // origin: process.env.FRONTEND_URL || 'https://ladybird-frontend-deploy.vercel.app',
+  //credentials: true
+//}));
+//
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'https://ladybird-frontend-deploy.vercel.app',
+  origin: [
+    "https://ladybird-frontend-deploy.vercel.app"
+  ],
   credentials: true
 }));
+
 
 // Normalize URL middleware - strips accidental newline/carriage-return encodings from URLs
 app.use((req, res, next) => {
@@ -22,7 +30,7 @@ app.use((req, res, next) => {
 const PORT = process.env.PORT;
 const MONGO_URL = process.env.mongo_url;
 const authRouter = require('./router.js/authrouter');
-app.use("/auth", authRouter);
+app.use("/api/auth", authRouter);
 const customerRouter=require('./router.js/customerrouter');
 app.use('/customers',customerRouter);
 const inventoryRouter = require("./router.js/inventoryrouter");
@@ -52,5 +60,6 @@ mongoose.connect(MONGO_URL)
 app.listen(PORT, () => {
     console.log(`server is connected successfully on PORT ${PORT}`);
 });
+
 
 
