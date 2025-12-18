@@ -30,7 +30,7 @@ app.use((req, res, next) => {
 const PORT = process.env.PORT;
 const MONGO_URL = process.env.mongo_url;
 const authRouter = require('./router.js/authrouter');
-app.use("/api/auth", authRouter);
+app.use("/auth", authRouter);
 const customerRouter=require('./router.js/customerrouter');
 app.use('/customers',customerRouter);
 const inventoryRouter = require("./router.js/inventoryrouter");
@@ -60,6 +60,7 @@ mongoose.connect(MONGO_URL)
 app.listen(PORT, () => {
     console.log(`server is connected successfully on PORT ${PORT}`);
 });
+
 
 
 
