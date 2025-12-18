@@ -48,6 +48,20 @@ app.use("/api", salesReportRouter);
 const workScheduleRouter = require("./router.js/workschedulerouter");
 app.use("/workschedule", workScheduleRouter);
 
+// Basic dashboard stats endpoint for frontend
+app.get("/dashboard/stats", (req, res) => {
+  // Placeholder values; replace with real aggregations if needed
+  res.json({
+    today_sales: 0,
+    monthly_sales: 0,
+    pending_orders: 0,
+    ready_orders: 0,
+    unpaid_bills: 0,
+    upcoming_delivery: [],
+  });
+});
+
+
 mongoose.connect(MONGO_URL)
     .then(() => {
         console.log('MongoDB is connected successfully');
@@ -60,6 +74,7 @@ mongoose.connect(MONGO_URL)
 app.listen(PORT, () => {
     console.log(`server is connected successfully on PORT ${PORT}`);
 });
+
 
 
 
