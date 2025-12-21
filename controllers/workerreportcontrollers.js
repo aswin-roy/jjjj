@@ -1,4 +1,4 @@
-const Worker = require("../models.js/workermodels");
+constconst Worker = require("../models.js/workermodels");
 const Order = require("../models.js/ordermodels");
 
 // Create worker
@@ -129,6 +129,7 @@ const getAllWorkersReport = async (_req, res) => {
       const amount = row.totalCommission;
 
       if (!workerSummaries[workerId]) {
+        // Should have been initialized below, but just in case
         const info = workersMap[workerId] || { id: workerId, name: "Unknown", role: "" };
         workerSummaries[workerId] = {
           worker: info,
@@ -142,6 +143,18 @@ const getAllWorkersReport = async (_req, res) => {
 
       globalTotalsByTask[task] = (globalTotalsByTask[task] || 0) + amount;
       globalGrandTotal += amount;
+    });
+
+    // Ensure ALL workers are in the report, even with 0 commission
+    workers.forEach(w => {
+      const wId = String(w._id);
+      if (!workerSummaries[wId]) {
+        workerSummaries[wId] = {
+          worker: { id: w._id, name: w.name, role: w.role },
+          totalsByTask: {},
+          totalCommission: 0
+        };
+      }
     });
 
     return res.status(200).json({
@@ -163,3 +176,4 @@ module.exports = {
   getWorkerReport,
   getAllWorkersReport
 };
+
