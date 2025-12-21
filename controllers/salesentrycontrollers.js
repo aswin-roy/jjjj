@@ -135,6 +135,7 @@ module.exports = {
 
 
 const SalesEntry = require("../models.js/salesentrymodels");
+const Inventory = require("../models.js/inventorymodels");
 
 const computeItemsAndTotals = (items = []) => {
   if (!Array.isArray(items) || items.length === 0) {
@@ -181,6 +182,14 @@ const createSalesEntry = async (req, res) => {
     });
 
     const saved = await entry.save();
+
+    // Decrease inventory stock
+    for (const item of computedItems) {
+      await Inventory.findByIdAndUpdate(item.product, {
+        $inc: { stock: -item.quantity }
+      });
+    }
+
     return res.status(201).json({ message: "sales entry created", data: saved });
   } catch (err) {
     return res.status(500).json({ message: "server error", error: err.message });
@@ -269,4 +278,6 @@ module.exports = {
   updateSalesEntry,
   deleteSalesEntry
 };
+
+
 
