@@ -1,4 +1,4 @@
-const Order = require("../models.js/ordermodels"); 
+const Order = require("../models.js/ordermodels");
 // Create order
 const createOrder = async (req, res) => {
     try {
@@ -70,6 +70,9 @@ const updateOrder = async (req, res) => {
             data: updatedOrder
         });
     } catch (err) {
+        if (err.name === 'CastError') {
+            return res.status(400).json({ message: "Invalid Order ID format" });
+        }
         res.status(500).json({ message: "Server error", error: err.message });
     }
 };
@@ -109,11 +112,12 @@ const deleteOrder = async (req, res) => {
 };
 
 
-module.exports = { 
+module.exports = {
     createOrder,
     getAllOrders,
     getOrderById,
     updateOrder,
     addWorkerAssignment,
     deleteOrder
+};
  };
