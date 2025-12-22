@@ -64,10 +64,10 @@ module.exports = {
   getAllCustomers,
   getCustomerById,
   updateCustomer,
-  deleteCustomer
-};
+  deleteCustomer,
   getCustomerById,
   updateCustomer,
   deleteCustomer
 
 };
+
