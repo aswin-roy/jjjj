@@ -40,6 +40,10 @@ const updateCustomer = async (req, res) => {
     if (!updated) return res.status(404).json({ message: "customer not found" });
     return res.status(200).json({ message: "customer updated", data: updated });
   } catch (err) {
+    console.error("Update Customer Error:", err);
+    if (err.name === 'CastError') {
+      return res.status(400).json({ message: "Invalid Customer ID format" });
+    }
     return res.status(500).json({ message: "server error", error: err.message });
   }
 };
@@ -61,4 +65,9 @@ module.exports = {
   getCustomerById,
   updateCustomer,
   deleteCustomer
+};
+  getCustomerById,
+  updateCustomer,
+  deleteCustomer
+
 };
