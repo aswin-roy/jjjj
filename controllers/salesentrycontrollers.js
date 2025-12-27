@@ -1,4 +1,6 @@
-/*const SalesEntry = require("../models.js/salesentrymodels");
+const SalesEntry = require("../models.js/salesentrymodels");
+const SalesReport = require("../models.js/salesreportmodels");
+const Inventory = require("../models.js/inventorymodels");
 
 const computeItemsAndTotals = (items = []) => {
   if (!Array.isArray(items) || items.length === 0) {
@@ -14,7 +16,9 @@ const computeItemsAndTotals = (items = []) => {
     return { product, quantity, rate, amount };
   });
 
-  const totalAmount = computedItems.reduce((sum, i) => sum + (i.amount || 0), 0);
+  const subtotal = computedItems.reduce((sum, i) => sum + (i.amount || 0), 0);
+  const tax = subtotal * 0.05;
+  const totalAmount = subtotal + tax;
   return { computedItems, totalAmount };
 };
 
@@ -28,7 +32,7 @@ const createSalesEntry = async (req, res) => {
 
     const { computedItems, totalAmount } = computeItemsAndTotals(items);
     const balance = totalAmount - paidAmount;
-    if (balance < 0) {
+    if (balance < -0.1) {
       return res.status(400).json({ message: "paidAmount cannot exceed totalAmount" });
     }
 
@@ -43,6 +47,26 @@ const createSalesEntry = async (req, res) => {
     });
 
     const saved = await entry.save();
+    // Also create a corresponding SalesReport entry for reporting purposes
+    const billNo = `B${String(saved._id).slice(-6).toUpperCase()}`;
+    await SalesReport.create({
+      billNo,
+      customer: saved.customerId?.toString() || 'Unknown',
+      phone: 0,
+      mode: saved.paymentMethod,
+      total: saved.totalAmount,
+      paid: saved.paidAmount,
+      pending: saved.balance,
+      date: saved.createdAt
+    });
+
+    // Decrease inventory stock
+    for (const item of computedItems) {
+      await Inventory.findByIdAndUpdate(item.product, {
+        $inc: { stock: -item.quantity }
+      });
+    }
+
     return res.status(201).json({ message: "sales entry created", data: saved });
   } catch (err) {
     return res.status(500).json({ message: "server error", error: err.message });
@@ -101,7 +125,7 @@ const updateSalesEntry = async (req, res) => {
     }
 
     const balance = entry.totalAmount - (entry.paidAmount || 0);
-    if (balance < 0) {
+    if (balance < -0.1) {
       return res.status(400).json({ message: "paidAmount cannot exceed totalAmount" });
     }
     entry.balance = balance;
@@ -131,9 +155,8 @@ module.exports = {
   updateSalesEntry,
   deleteSalesEntry
 };
-*/
 
-
+/*
 const SalesEntry = require("../models.js/salesentrymodels");
 const Inventory = require("../models.js/inventorymodels");
 
@@ -277,7 +300,8 @@ module.exports = {
   getSalesEntryById,
   updateSalesEntry,
   deleteSalesEntry
-};
+};/*/
+
 
 
 
