@@ -77,25 +77,28 @@ const getAllSalesReports = async (req, res) => {
       sortOrder = 'desc'
     } = req.query;
 
-    // Build query filter for sales reports
+    // Build query filter for sales entries
     const filter = {};
 
-    // Date filtering - use `date` field from sales reports
+    // Date filtering - use createdAt from sales entries
     if (month && year) {
       const start = new Date(parseInt(year), parseInt(month) - 1, 1);
       const end = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59, 999);
-      filter.date = { $gte: start, $lte: end };
+      filter.createdAt = { $gte: start, $lte: end };
     } else if (startDate && endDate) {
-      filter.date = { $gte: new Date(startDate), $lte: new Date(endDate) };
+      filter.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
     } else if (startDate) {
-      filter.date = { $gte: new Date(startDate) };
+      filter.createdAt = { $gte: new Date(startDate) };
     } else if (endDate) {
-      filter.date = { $lte: new Date(endDate) };
+      filter.createdAt = { $lte: new Date(endDate) };
     }
 
-    // Mode filter - use `mode` from sales reports
+    // Mode filter - use paymentMethod from sales entries
     if (mode && ['upi', 'cash', 'card'].includes(mode.toLowerCase())) {
-      filter.mode = mode.toLowerCase();
+      filter.paymentMethod = mode.toLowerCase();
     }
 
     // Pagination
@@ -108,14 +111,16 @@ const getAllSalesReports = async (req, res) => {
     const sortField = sortBy === 'date' ? 'createdAt' : sortBy;
     sortOptions[sortField] = sortOrder === 'asc' ? 1 : -1;
 
-    // Fetch sales reports
+    // Fetch sales entries with customer populated
     const [entries, total] = await Promise.all([
-      SalesReport.find(filter)
+      SalesEntry.find(filter)
+        .populate('customerId')
+        .populate('items.product')
         .sort(sortOptions)
         .skip(skip)
         .limit(limitNum)
         .lean(),
-      SalesReport.countDocuments(filter)
+      SalesEntry.countDocuments(filter)
     ]);
 
     console.log(`Found ${entries.length} sales entries, total: ${total}`);
@@ -138,19 +143,19 @@ const getAllSalesReports = async (req, res) => {
 
       return {
         _id: entry._id,
-        bill_no: entry.billNo,
-        customer: entry.customer,
-        phone: entry.phone?.toString() || '',
-        paymentMode: entry.mode,
-        amount: entry.total,
-        paidAmount: entry.paid,
-        status: entry.pending <= 0 ? 'Paid' : 'Unpaid',
-        date: entry.date ? entry.date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        billNo: entry.billNo, // Keep for compatibility if needed
-        mode: entry.mode,
-        total: entry.total,
-        paid: entry.paid,
-        pending: entry.pending,
+        bill_no: billNo,
+        customer: customer.customername || 'Unknown Customer',
+        phone: String(customer.customerphone || ''),
+        paymentMode: entry.paymentMethod,
+        amount: entry.totalAmount,
+        paidAmount: entry.paidAmount,
+        status: entry.balance <= 0.5 ? 'Paid' : 'Unpaid',
+        date: entry.createdAt ? entry.createdAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        billNo: billNo, // Keep for compatibility if needed
+        mode: entry.paymentMethod,
+        total: entry.totalAmount,
+        paid: entry.paidAmount,
+        pending: entry.balance,
         createdAt: entry.createdAt,
         updatedAt: entry.updatedAt
       };
@@ -733,6 +738,7 @@ module.exports = {
   getInvoiceForPrint,
   getDatabaseStats
 };*/
+
 
 
 
