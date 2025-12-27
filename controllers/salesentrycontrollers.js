@@ -17,7 +17,7 @@ const computeItemsAndTotals = (items = []) => {
   });
 
   const subtotal = computedItems.reduce((sum, i) => sum + (i.amount || 0), 0);
-  const tax = subtotal * 0.05;
+  const tax = subtotal * 0;
   const totalAmount = subtotal + tax;
   return { computedItems, totalAmount };
 };
@@ -301,6 +301,7 @@ module.exports = {
   updateSalesEntry,
   deleteSalesEntry
 };/*/
+
 
 
 
