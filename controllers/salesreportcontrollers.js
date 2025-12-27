@@ -1,4 +1,4 @@
-/*const SalesReport = require("../models.js/salesreportmodels");
+const SalesReport = require("../models.js/salesreportmodels");
 const SalesEntry = require("../models.js/salesentrymodels");
 
 // POST /api/sales-report - Create a new sales report
@@ -23,20 +23,20 @@ const createSalesReport = async (req, res) => {
     // Auto-calculate pending if not provided or validate if provided
     const calculatedPending = total - paid;
     if (calculatedPending < 0) {
-      return res.status(400).json({ 
-        message: "paid amount cannot exceed total amount" 
+      return res.status(400).json({
+        message: "paid amount cannot exceed total amount"
       });
     }
 
     // Use calculated pending if not provided or doesn't match
-    const finalPending = (pending === undefined || pending === null) 
-      ? calculatedPending 
+    const finalPending = (pending === undefined || pending === null)
+      ? calculatedPending
       : pending;
 
     // Validate pending matches calculation if explicitly provided
     if (pending !== undefined && pending !== null && pending !== calculatedPending) {
-      return res.status(400).json({ 
-        message: `pending (${pending}) must equal total (${total}) - paid (${paid}) = ${calculatedPending}` 
+      return res.status(400).json({
+        message: `pending (${pending}) must equal total (${total}) - paid (${paid}) = ${calculatedPending}`
       });
     }
 
@@ -64,41 +64,38 @@ const createSalesReport = async (req, res) => {
 // GET /api/sales-report - Get all sales reports from sales entries
 const getAllSalesReports = async (req, res) => {
   try {
-    const { 
-      search, 
-      month, 
-      year, 
-      startDate, 
-      endDate, 
-      mode, 
-      page = 1, 
+    const {
+      search,
+      month,
+      year,
+      startDate,
+      endDate,
+      mode,
+      page = 1,
       limit = 50,
       sortBy = 'createdAt',
       sortOrder = 'desc'
     } = req.query;
 
-    // Build query filter for sales entries
+    // Build query filter for sales reports
     const filter = {};
 
-    // Date filtering - use createdAt from sales entries
+    // Date filtering - use `date` field from sales reports
     if (month && year) {
       const start = new Date(parseInt(year), parseInt(month) - 1, 1);
       const end = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59, 999);
-      filter.createdAt = { $gte: start, $lte: end };
+      filter.date = { $gte: start, $lte: end };
     } else if (startDate && endDate) {
-      filter.createdAt = { 
-        $gte: new Date(startDate), 
-        $lte: new Date(endDate) 
-      };
+      filter.date = { $gte: new Date(startDate), $lte: new Date(endDate) };
     } else if (startDate) {
-      filter.createdAt = { $gte: new Date(startDate) };
+      filter.date = { $gte: new Date(startDate) };
     } else if (endDate) {
-      filter.createdAt = { $lte: new Date(endDate) };
+      filter.date = { $lte: new Date(endDate) };
     }
 
-    // Mode filter - use paymentMethod from sales entries
+    // Mode filter - use `mode` from sales reports
     if (mode && ['upi', 'cash', 'card'].includes(mode.toLowerCase())) {
-      filter.paymentMethod = mode.toLowerCase();
+      filter.mode = mode.toLowerCase();
     }
 
     // Pagination
@@ -111,16 +108,14 @@ const getAllSalesReports = async (req, res) => {
     const sortField = sortBy === 'date' ? 'createdAt' : sortBy;
     sortOptions[sortField] = sortOrder === 'asc' ? 1 : -1;
 
-    // Fetch sales entries with customer populated
+    // Fetch sales reports
     const [entries, total] = await Promise.all([
-      SalesEntry.find(filter)
-        .populate('customerId')
-        .populate('items.product')
+      SalesReport.find(filter)
         .sort(sortOptions)
         .skip(skip)
         .limit(limitNum)
         .lean(),
-      SalesEntry.countDocuments(filter)
+      SalesReport.countDocuments(filter)
     ]);
 
     console.log(`Found ${entries.length} sales entries, total: ${total}`);
@@ -137,21 +132,25 @@ const getAllSalesReports = async (req, res) => {
           customer = { customername: 'Customer Not Found', customerphone: 0 };
         }
       }
-      
+
       // Generate bill number from entry ID
       const billNo = `B${String(entry._id).slice(-6).toUpperCase()}`;
-      
+
       return {
-        _id: entry._id,  // Use this ID for print endpoint: /api/invoice-print/:id
-        billNo: billNo,
-        customer: customer.customername || 'Unknown Customer',
-        phone: customer.customerphone || 0,
-        mode: entry.paymentMethod,
-        total: entry.totalAmount,
-        paid: entry.paidAmount,
-        pending: entry.balance,
-        date: entry.createdAt || new Date(),
-        // Additional fields for frontend convenience
+        _id: entry._id,
+        bill_no: entry.billNo,
+        customer: entry.customer,
+        phone: entry.phone?.toString() || '',
+        paymentMode: entry.mode,
+        amount: entry.total,
+        paidAmount: entry.paid,
+        status: entry.pending <= 0 ? 'Paid' : 'Unpaid',
+        date: entry.date ? entry.date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        billNo: entry.billNo, // Keep for compatibility if needed
+        mode: entry.mode,
+        total: entry.total,
+        paid: entry.paid,
+        pending: entry.pending,
         createdAt: entry.createdAt,
         updatedAt: entry.updatedAt
       };
@@ -181,8 +180,8 @@ const getAllSalesReports = async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching sales reports:', err);
-    return res.status(500).json({ 
-      message: "server error", 
+    return res.status(500).json({
+      message: "server error",
       error: err.message,
       stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
@@ -196,15 +195,15 @@ const getSalesReportSummary = async (req, res) => {
 
     // Build date filter
     const dateFilter = {};
-    
+
     if (month && year) {
       const start = new Date(parseInt(year), parseInt(month) - 1, 1);
       const end = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59, 999);
       dateFilter.createdAt = { $gte: start, $lte: end };
     } else if (startDate && endDate) {
-      dateFilter.createdAt = { 
-        $gte: new Date(startDate), 
-        $lte: new Date(endDate) 
+      dateFilter.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
       };
     } else if (startDate) {
       dateFilter.createdAt = { $gte: new Date(startDate) };
@@ -247,7 +246,7 @@ const getInvoiceById = async (req, res) => {
     const entry = await SalesEntry.findById(req.params.id)
       .populate('customerId')
       .populate('items.product');
-    
+
     if (!entry) {
       return res.status(404).json({ message: "invoice not found" });
     }
@@ -287,7 +286,7 @@ const getInvoiceForPrint = async (req, res) => {
     const entry = await SalesEntry.findById(req.params.id)
       .populate('customerId')
       .populate('items.product');
-    
+
     if (!entry) {
       return res.status(404).json({ message: "invoice not found" });
     }
@@ -330,7 +329,7 @@ const getDatabaseStats = async (req, res) => {
     const salesEntryCount = await SalesEntry.countDocuments({});
     const salesReportCount = await SalesReport.countDocuments({});
     const sampleEntry = await SalesEntry.findOne({}).populate('customerId').lean();
-    
+
     return res.status(200).json({
       salesEntries: {
         count: salesEntryCount,
@@ -345,7 +344,7 @@ const getDatabaseStats = async (req, res) => {
       salesReports: {
         count: salesReportCount
       },
-      message: salesEntryCount > 0 
+      message: salesEntryCount > 0
         ? `Found ${salesEntryCount} sales entries. Sales reports are generated from these entries.`
         : 'No sales entries found. Create sales entries first using POST /salesentries'
     });
@@ -362,10 +361,11 @@ module.exports = {
   getInvoiceForPrint,
   getDatabaseStats
 };
-/*/
 
 
-const SalesReport = require("../models.js/salesreportmodels");
+
+
+/*const SalesReport = require("../models.js/salesreportmodels");
 const SalesEntry = require("../models.js/salesentrymodels");
 
 // POST /api/sales-report - Create a new sales report
@@ -732,7 +732,8 @@ module.exports = {
   getInvoiceById,
   getInvoiceForPrint,
   getDatabaseStats
-};
+};*/
+
 
 
 
