@@ -125,7 +125,12 @@ const getWorkerReport = async (req, res) => {
 
     const pipeline = [
       { $unwind: "$workerAssignment" },
-      { $match: { "workerAssignment.worker": worker._id } },
+      {
+        $match: {
+          "workerAssignment.worker": worker._id,
+          ...dateFilter
+        }
+      },
       {
         $group: {
           _id: "$workerAssignment.task",
@@ -222,7 +227,12 @@ const getAllWorkersReport = async (req, res) => {
       totalsByTask: globalTotalsByTask,
       totalCommission: globalGrandTotal,
       workers: Object.values(workerSummaries),
-      filter: dateFilter
+      filter: dateFilter,
+      debug: {
+        filter: dateFilter,
+        pipelineMatchStage: JSON.stringify(dateFilter),
+        aggCount: agg.length
+      }
     });
   } catch (err) {
     return res.status(500).json({ message: "server error", error: err.message });
@@ -238,6 +248,7 @@ module.exports = {
   getWorkerReport,
   getAllWorkersReport
 };
+
 
 
 
@@ -425,6 +436,7 @@ module.exports = {
 
 
 */
+
 
 
 
