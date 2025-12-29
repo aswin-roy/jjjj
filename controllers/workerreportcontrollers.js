@@ -179,7 +179,7 @@ const getAllWorkersReport = async (req, res) => {
       {
         $group: {
           _id: { worker: "$workerAssignment.worker", task: "$workerAssignment.task" },
-          totalCommission: { $sum: { $ifNull: ["$workerAssignment.commission", 0] } }
+          totalCommission: { $sum: { $convert: { input: { $ifNull: ["$workerAssignment.commission", 0] }, to: "double", onError: 0, onNull: 0 } } }
         }
       }
     ];
@@ -256,6 +256,7 @@ module.exports = {
   getWorkerReport,
   getAllWorkersReport
 };
+;
 
 
 
@@ -444,6 +445,7 @@ module.exports = {
 
 
 */
+
 
 
 
