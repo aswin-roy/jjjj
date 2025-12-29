@@ -1,9 +1,17 @@
-const mongoose= require('mongoose');
-const workerreportSchema =new mongoose.Schema({
-    name:{
-        type:String
+const mongoose = require('mongoose');
+
+const workerSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true
     },
-    role:{
-        type:String
+    role: {
+      type: String,
+      required: true
     }
-})
+  },
+  { timestamps: true }
+);
+
+module.exports = mongoose.model("Worker", workerSchema);
