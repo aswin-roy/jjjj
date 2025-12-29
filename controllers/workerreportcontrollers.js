@@ -1,4 +1,4 @@
-const Worker = require("../models.js/workermodels");
+/*const Worker = require("../models.js/workermodels");
 const Order = require("../models.js/ordermodels");
 
 // Create worker
@@ -242,13 +242,13 @@ module.exports = {
   deleteWorker,
   getWorkerReport,
   getAllWorkersReport
-};
+};/*/
 
 
 
 
 
-/*
+
 const Worker = require("../models.js/workermodels");
 const Order = require("../models.js/ordermodels");
 
@@ -426,7 +426,8 @@ module.exports = {
   deleteWorker,
   getWorkerReport,
   getAllWorkersReport
-};/*/
+};
+
 
 
 
