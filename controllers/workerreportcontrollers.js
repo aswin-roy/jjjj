@@ -1,4 +1,4 @@
-/*const Worker = require("../models.js/workermodels");
+const Worker = require("../models.js/workermodels");
 const Order = require("../models.js/ordermodels");
 
 // Create worker
@@ -59,17 +59,77 @@ const deleteWorker = async (req, res) => {
   }
 };
 
+// Helper to build date filter
+const buildDateFilter = (query) => {
+  const { type, date, month, year, startDate, endDate } = query;
+  let filter = {};
+
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  if (startDate && endDate) {
+    // Custom range
+    filter = {
+      "workerAssignment.date": {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      }
+    };
+  } else if (type === 'day' && date) {
+    // Specific day
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+    filter = {
+      "workerAssignment.date": { $gte: start, $lte: end }
+    };
+  } else if (type === 'month' || (month && year)) {
+    // Specific month
+    const m = month ? parseInt(month) - 1 : currentMonth; // 0-indexed
+    const y = year ? parseInt(year) : currentYear;
+    const start = new Date(y, m, 1);
+    const end = new Date(y, m + 1, 0, 23, 59, 59, 999);
+    filter = {
+      "workerAssignment.date": { $gte: start, $lte: end }
+    };
+  } else if (type === 'year' && year) {
+    // Specific year
+    const y = parseInt(year);
+    const start = new Date(y, 0, 1);
+    const end = new Date(y, 11, 31, 23, 59, 59, 999);
+    filter = {
+      "workerAssignment.date": { $gte: start, $lte: end }
+    };
+  } else {
+    // Default: Current Month
+    const start = new Date(currentYear, currentMonth, 1);
+    const end = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999);
+    filter = {
+      "workerAssignment.date": { $gte: start, $lte: end }
+    };
+  }
+  return filter;
+};
+
 // Commission breakdown for a single worker (by task and total)
 const getWorkerReport = async (req, res) => {
   try {
     const workerId = req.params.id;
+    const dateFilter = buildDateFilter(req.query);
 
     const worker = await Worker.findById(workerId);
     if (!worker) return res.status(404).json({ message: "worker not found" });
 
     const pipeline = [
       { $unwind: "$workerAssignment" },
-      { $match: { "workerAssignment.worker": worker._id } },
+      {
+        $match: {
+          "workerAssignment.worker": worker._id,
+          ...dateFilter
+        }
+      },
       {
         $group: {
           _id: "$workerAssignment.task",
@@ -89,7 +149,8 @@ const getWorkerReport = async (req, res) => {
     return res.status(200).json({
       worker: { id: worker._id, name: worker.name, role: worker.role },
       totalsByTask,
-      totalCommission: grandTotal
+      totalCommission: grandTotal,
+      filter: dateFilter
     });
   } catch (err) {
     return res.status(500).json({ message: "server error", error: err.message });
@@ -97,11 +158,16 @@ const getWorkerReport = async (req, res) => {
 };
 
 // Aggregate report for all workers (per worker totals and global totals)
-const getAllWorkersReport = async (_req, res) => {
+const getAllWorkersReport = async (req, res) => {
   try {
+    const dateFilter = buildDateFilter(req.query);
+
     // Aggregate per worker / task commissions from orders
     const pipeline = [
       { $unwind: "$workerAssignment" },
+      {
+        $match: dateFilter
+      },
       {
         $group: {
           _id: { worker: "$workerAssignment.worker", task: "$workerAssignment.task" },
@@ -160,7 +226,8 @@ const getAllWorkersReport = async (_req, res) => {
     return res.status(200).json({
       totalsByTask: globalTotalsByTask,
       totalCommission: globalGrandTotal,
-      workers: Object.values(workerSummaries)
+      workers: Object.values(workerSummaries),
+      filter: dateFilter
     });
   } catch (err) {
     return res.status(500).json({ message: "server error", error: err.message });
@@ -175,8 +242,13 @@ module.exports = {
   deleteWorker,
   getWorkerReport,
   getAllWorkersReport
-};*/
+};
 
+
+
+
+
+/*
 const Worker = require("../models.js/workermodels");
 const Order = require("../models.js/ordermodels");
 
@@ -354,7 +426,8 @@ module.exports = {
   deleteWorker,
   getWorkerReport,
   getAllWorkersReport
-};
+};/*/
+
 
 
 
