@@ -10,6 +10,11 @@ const buildDateFilter = (query) => {
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
+  if (!type || type === 'all' || (Object.keys(query).length === 0)) {
+    // No date filter or explicit 'all'
+    return {};
+  }
+
   if (startDate && endDate) {
     // Custom range
     filter = {
@@ -44,17 +49,8 @@ const buildDateFilter = (query) => {
     filter = {
       "workerAssignment.date": { $gte: start, $lte: end }
     };
-  } else if (type === 'all') {
-    // No date filter
-    filter = {};
-  } else {
-    // Default: Current Month
-    const start = new Date(currentYear, currentMonth, 1);
-    const end = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999);
-    filter = {
-      "workerAssignment.date": { $gte: start, $lte: end }
-    };
   }
+  return filter;
   return filter;
 };
 
@@ -131,9 +127,23 @@ const getWorkerReport = async (req, res) => {
     const pipeline = [
       { $unwind: "$workerAssignment" },
       {
+        $addFields: {
+          "workerAssignment.date": {
+            $convert: {
+              input: { $ifNull: ["$workerAssignment.date", "$createdAt"] },
+              to: "date",
+              onError: new Date(),
+              onNull: new Date()
+            }
+          }
+        }
+      },
+      {
         $match: {
-          "workerAssignment.worker": worker._id,
-          ...dateFilter
+          $and: [
+            { $expr: { $eq: [{ $toString: "$workerAssignment.worker" }, String(worker._id)] } },
+            dateFilter
+          ]
         }
       },
       {
@@ -187,7 +197,14 @@ const getAllWorkersReport = async (req, res) => {
       { $unwind: "$workerAssignment" },
       {
         $addFields: {
-          "workerAssignment.date": { $ifNull: ["$workerAssignment.date", "$createdAt"] }
+          "workerAssignment.date": {
+            $convert: {
+              input: { $ifNull: ["$workerAssignment.date", "$createdAt"] },
+              to: "date",
+              onError: new Date(),
+              onNull: new Date()
+            }
+          }
         }
       },
       {
@@ -493,6 +510,7 @@ module.exports = {
 
 
 */
+
 
 
 
