@@ -44,6 +44,9 @@ const buildDateFilter = (query) => {
     filter = {
       "workerAssignment.date": { $gte: start, $lte: end }
     };
+  } else if (type === 'all') {
+    // No date filter
+    filter = {};
   } else {
     // Default: Current Month
     const start = new Date(currentYear, currentMonth, 1);
@@ -135,7 +138,15 @@ const getWorkerReport = async (req, res) => {
       },
       {
         $group: {
-          _id: "$workerAssignment.task",
+          _id: {
+            $switch: {
+              branches: [
+                { case: { $regexMatch: { input: "$workerAssignment.task", regex: /^cutting$/i } }, then: "Cutting" },
+                { case: { $regexMatch: { input: "$workerAssignment.task", regex: /^stitching$/i } }, then: "Stitching" }
+              ],
+              default: "$workerAssignment.task"
+            }
+          },
           totalCommission: { $sum: { $ifNull: ["$workerAssignment.commission", 0] } }
         }
       }
@@ -178,7 +189,18 @@ const getAllWorkersReport = async (req, res) => {
       },
       {
         $group: {
-          _id: { worker: "$workerAssignment.worker", task: "$workerAssignment.task" },
+          _id: {
+            worker: "$workerAssignment.worker",
+            task: {
+              $switch: {
+                branches: [
+                  { case: { $regexMatch: { input: "$workerAssignment.task", regex: /^cutting$/i } }, then: "Cutting" },
+                  { case: { $regexMatch: { input: "$workerAssignment.task", regex: /^stitching$/i } }, then: "Stitching" }
+                ],
+                default: { $ifNull: ["$workerAssignment.task", "unspecified"] }
+              }
+            }
+          },
           totalCommission: { $sum: { $convert: { input: { $ifNull: ["$workerAssignment.commission", 0] }, to: "double", onError: 0, onNull: 0 } } }
         }
       }
@@ -256,7 +278,6 @@ module.exports = {
   getWorkerReport,
   getAllWorkersReport
 };
-;
 
 
 
@@ -445,6 +466,7 @@ module.exports = {
 
 
 */
+
 
 
 
