@@ -139,12 +139,16 @@ const getWorkerReport = async (req, res) => {
       {
         $group: {
           _id: {
-            $switch: {
-              branches: [
-                { case: { $regexMatch: { input: "$workerAssignment.task", regex: /^cutting$/i } }, then: "Cutting" },
-                { case: { $regexMatch: { input: "$workerAssignment.task", regex: /^stitching$/i } }, then: "Stitching" }
-              ],
-              default: "$workerAssignment.task"
+            $cond: {
+              if: { $eq: [{ $toLower: "$workerAssignment.task" }, "cutting"] },
+              then: "Cutting",
+              else: {
+                $cond: {
+                  if: { $eq: [{ $toLower: "$workerAssignment.task" }, "stitching"] },
+                  then: "Stitching",
+                  else: "$workerAssignment.task"
+                }
+              }
             }
           },
           totalCommission: { $sum: { $ifNull: ["$workerAssignment.commission", 0] } }
@@ -156,14 +160,16 @@ const getWorkerReport = async (req, res) => {
     const totalsByTask = {};
     let grandTotal = 0;
     results.forEach((row) => {
-      totalsByTask[row._id || "unspecified"] = row.totalCommission;
+      const task = row._id || "unspecified";
+      totalsByTask[task] = row.totalCommission;
       grandTotal += row.totalCommission;
     });
 
     return res.status(200).json({
       worker: { id: worker._id, name: worker.name, role: worker.role },
       totalsByTask,
-      totalCommission: grandTotal
+      totalCommission: grandTotal,
+      debug: { pipeline: JSON.stringify(pipeline), resultsCount: results.length }
     });
   } catch (err) {
     return res.status(500).json({ message: "server error", error: err.message });
@@ -192,19 +198,38 @@ const getAllWorkersReport = async (req, res) => {
           _id: {
             worker: "$workerAssignment.worker",
             task: {
-              $switch: {
-                branches: [
-                  { case: { $regexMatch: { input: "$workerAssignment.task", regex: /^cutting$/i } }, then: "Cutting" },
-                  { case: { $regexMatch: { input: "$workerAssignment.task", regex: /^stitching$/i } }, then: "Stitching" }
-                ],
-                default: { $ifNull: ["$workerAssignment.task", "unspecified"] }
+              $cond: {
+                if: { $eq: [{ $toLower: "$workerAssignment.task" }, "cutting"] },
+                then: "Cutting",
+                else: {
+                  $cond: {
+                    if: { $eq: [{ $toLower: "$workerAssignment.task" }, "stitching"] },
+                    then: "Stitching",
+                    else: { $ifNull: ["$workerAssignment.task", "unspecified"] }
+                  }
+                }
               }
             }
           },
-          totalCommission: { $sum: { $convert: { input: { $ifNull: ["$workerAssignment.commission", 0] }, to: "double", onError: 0, onNull: 0 } } }
+          totalCommission: {
+            $sum: {
+              $convert: {
+                input: { $ifNull: ["$workerAssignment.commission", 0] },
+                to: "double",
+                onError: 0,
+                onNull: 0
+              }
+            }
+          }
         }
       }
     ];
+
+    // For debugging, get a count of all unwound assignments before grouping
+    const rawAssignmentsCount = await Order.aggregate([
+      { $unwind: "$workerAssignment" },
+      { $count: "count" }
+    ]);
 
     const agg = await Order.aggregate(pipeline);
 
@@ -260,8 +285,10 @@ const getAllWorkersReport = async (req, res) => {
       filter: dateFilter,
       debug: {
         filter: dateFilter,
-        pipelineMatchStage: JSON.stringify(dateFilter),
-        aggCount: agg.length
+        aggCount: agg.length,
+        rawAssignmentsCount: rawAssignmentsCount[0]?.count || 0,
+        workerCount: workers.length,
+        firstFewAggResults: agg.slice(0, 5)
       }
     });
   } catch (err) {
@@ -466,6 +493,7 @@ module.exports = {
 
 
 */
+
 
 
 
