@@ -71,7 +71,7 @@ const measurementSchema = new mongoose.Schema(
             pointwidth: { type: Number },
             toplength: { type: Number },
             slideopenlength: { type: Number },
-            yorklength: { type: Number },
+            yorkelength: { type: Number },
             collar: { type: Number },
             shirtlength: { type: Number }
         },
@@ -98,6 +98,7 @@ const Measurement = mongoose.model("measurements", measurementSchema);
 measurementSchema.index({ createdAt: -1 });
 
 module.exports = Measurement;
+
 
 
 
