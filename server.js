@@ -11,10 +11,15 @@ require('dotenv').config();
   //credentials: true
 //}));
 //
-app.use(cors({
+/*app.use(cors({
   origin: [
     "https://ladybird-frontend-deploy.vercel.app"
   ],
+  credentials: true
+}));*/
+
+app.use(cors({
+  origin: process.env.FRONTEND_URL ,
   credentials: true
 }));
 
@@ -65,6 +70,7 @@ mongoose.connect(MONGO_URL)
 app.listen(PORT, () => {
     console.log(`server is connected successfully on PORT ${PORT}`);
 });
+
 
 
 
