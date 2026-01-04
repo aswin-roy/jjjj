@@ -79,6 +79,7 @@ const measurementSchema = new mongoose.Schema(
             pantlength: { type: Number },
             waistround: { type: Number },
             hipround: { type: Number },
+            seat: { type: Number },
             thigh: { type: Number },
             knee: { type: Number },
             calf: { type: Number },
