@@ -13,7 +13,7 @@ require('dotenv').config();
 //
 app.use(cors({
   origin: [
-    "https://ladybirdboutiquebilling.com/"
+    "https://ladybirdboutiquebilling.com"
   ],
   credentials: true
 }));
@@ -64,6 +64,7 @@ mongoose.connect(MONGO_URL)
 app.listen(PORT, () => {
     console.log(`server is connected successfully on PORT ${PORT}`);
 });
+
 
 
 
